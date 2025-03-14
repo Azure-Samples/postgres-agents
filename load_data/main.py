@@ -1,4 +1,4 @@
-import psycopg2
+import psycopg
 import csv
 import json
 import os
@@ -22,7 +22,7 @@ AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME")
                                   
 # Establish a connection to the PostgreSQL database
-conn = psycopg2.connect(CONN_STR)
+conn = psycopg.connect(CONN_STR)
 
 # Create a cursor object using the connection
 cur = conn.cursor()

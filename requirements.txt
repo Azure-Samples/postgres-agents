@@ -5,7 +5,7 @@
 pandas
 python-dotenv
 sqlalchemy
-psycopg2-binary
+psycopg[binary,pool]
 azure-ai-projects 
 azure-identity 
 opentelemetry-sdk 
