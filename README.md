@@ -14,5 +14,5 @@ AI agents are revolutionizing how applications interact with data by combining l
 * Debugging with Azure AI Foundry Tracing
 
 ## Getting Started
-Check instructions the offical blog: [Blog](https://aka.ms/pg-agents)
+Check instructions the offical blog: [Blog](https://aka.ms/pg-ai-agents-blog)
 
