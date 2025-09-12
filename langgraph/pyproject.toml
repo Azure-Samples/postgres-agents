@@ -1,5 +1,5 @@
 [project]
-name = "langgraph-azure-postgres-blog"
+name = "langgraph-azure-postgres"
 version = "0.1.0"
 description = "Azure PostgreSQL + LangGraph Demo"
 readme = "README.md"
@@ -9,7 +9,7 @@ dependencies = [
   # constrained to the same version(s) that langchain-azure-postgresql depends on
   "aiohttp",
   "azure-identity",
-  "langchain-azure-postgresql~=0.2.0",
+  "langchain-azure-postgresql~=0.3.0",
   "pgvector",
 ]
 

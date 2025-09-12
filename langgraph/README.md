@@ -12,8 +12,8 @@ Short guide to spin up a local dev environment, configure Azure Postgres, and ru
 ## 2. Clone & Enter Project
 If you haven't already:
 ```bash
-git clone <this-repo-url>
-cd langgraph-azure-pg-blog
+git clone https://github.com/Azure-Samples/postgres-agents.git
+cd langgraph
 ```
 
 ## 3. Create & Activate Virtual Environment using `uv`
@@ -83,19 +83,12 @@ OPENAI_API_KEY=sk-...
 # AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small
 ```
 
-
-## 6. Verify Database Connectivity & Extension
-Use psql (or VSCode Postgres Extension):
-```bash
-psql "host=$AZURE_PG_HOST dbname=$AZURE_PG_DB user=$AZURE_PG_USER password=$AZURE_PG_PASSWORD sslmode=require" \
-  -c "CREATE EXTENSION IF NOT EXISTS vector;"
-```
-
-## 7. Run the Notebook
+## 6. Run the Notebook
 **Option A (VS Code):** 
 1. Open the folder, 
-2. Select Python interpreter `.venv`, 
-3. Open `langgraph.ipynb` and run cells.
+3. Open `langgraph.ipynb` 
+4. Select Python Environment `langgraph-azure-postgres`. This environment would have been created in previous steps through the pyproject.toml. 
+5. Run cells.
 
 **Option B (CLI Jupyter):**
 ```bash
@@ -104,7 +97,7 @@ jupyter notebook
 ```
 Open `langgraph.ipynb` in the browser.
 
-## 8. Common Issues
+## 7. Common Issues
 | Symptom | Fix |
 |---------|-----|
 | SSL error connecting to DB | Ensure `sslmode=require` & correct host name. |
@@ -113,7 +106,7 @@ Open `langgraph.ipynb` in the browser.
 | Slow vector search | Run `ANALYZE documents;` and adjust IVFFLAT `lists`. |
 | OpenAI auth error | Confirm key loaded: `echo $OPENAI_API_KEY`. |
 
-## 9. Cleaning Up
+## 8. Cleaning Up
 Deactivate venv:
 ```bash
 deactivate
