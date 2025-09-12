@@ -1,4 +1,4 @@
-# Build AI Agents with Azure Database for PostgreSQL and Azure AI Agent Service
+# Build AI Agents with Azure Database for PostgreSQL
 
 Combine Azure Database for PostgreSQL with popular GenAI Frameworks to create intelligent AI agents.
 
