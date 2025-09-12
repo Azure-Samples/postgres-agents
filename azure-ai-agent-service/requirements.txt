@@ -6,7 +6,7 @@ pandas
 python-dotenv
 sqlalchemy
 psycopg2-binary
-azure-ai-projects 
+azure-ai-projects==1.0.0b7 ## pinned to avoid breaking changes
 azure-identity 
 opentelemetry-sdk 
 azure-monitor-opentelemetry

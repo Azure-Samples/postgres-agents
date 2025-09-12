@@ -43,7 +43,11 @@ print(f"Created thread, ID: {thread.id}")
 message = project_client.agents.create_message(
     thread_id=thread.id,
     role="user",
-    content="Water leaking into the apartment from the floor above, What are the prominent legal precedents in Washington on this problem in the last 10 years?"
+    content="""
+    Water leaking into the apartment from the floor above, What are the prominent legal precedents in Washington on this problem in the last 10 years?
+    Make sure you use the provided tools to get accurate and up-to-date information.
+    Make sure you add the Case ID and Date to your answers.
+    """,
 )
 print(f"Created message, ID: {message.id}")
 
