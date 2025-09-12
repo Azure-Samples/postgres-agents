@@ -1,0 +1,23 @@
+[project]
+name = "langgraph-azure-postgres-blog"
+version = "0.1.0"
+description = "Azure PostgreSQL + LangGraph Demo"
+readme = "README.md"
+requires-python = "~=3.10"
+dependencies = [
+  # no specific version needed for aiohttp, azure-identity and pgvector; will be
+  # constrained to the same version(s) that langchain-azure-postgresql depends on
+  "aiohttp",
+  "azure-identity",
+  "langchain-azure-postgresql~=0.2.0",
+  "pgvector",
+]
+
+[dependency-groups]
+dev = ["ipykernel~=6.0", "ipywidgets~=8.0", "mypy~=1.0", "ruff~=0.12.0"]
+langchain = ["langchain~=0.3.0", "langchain-openai~=0.3.0", "openai~=1.0"]
+langgraph = ["langgraph~=0.6.0", "langgraph-checkpoint-postgres~=2.0"]
+utilities = ["python-dotenv~=1.0"]
+
+[tool.uv]
+default-groups = "all"
