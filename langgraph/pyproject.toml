@@ -11,6 +11,7 @@ dependencies = [
   "azure-identity",
   "langchain-azure-postgresql~=0.3.0",
   "pgvector",
+  "psycopg-pool>=3.3,<4",
 ]
 
 [dependency-groups]

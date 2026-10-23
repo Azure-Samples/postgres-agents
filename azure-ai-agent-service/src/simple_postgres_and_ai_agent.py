@@ -5,9 +5,6 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.projects.models import FunctionTool, ToolSet
 from datetime import datetime
 from legal_agent_tools import user_functions # user functions which can be found in a legal_agent_tools.py file.
-from dotenv import load_dotenv
-# Load environment variables
-load_dotenv("../.env")
 
 # Create an Azure AI Client from a connection string, copied from your Azure AI Foundry project.
 # It should be in the format "<HostName>;<AzureSubscriptionId>;<ResourceGroup>;<HubName>"
@@ -72,5 +69,4 @@ pprint(messages['data'][0]['content'][0]['text']['value'])
 #Delete the agent when done
 # project_client.agents.delete_agent(agent.id)
 # print("Deleted agent")
-
 
