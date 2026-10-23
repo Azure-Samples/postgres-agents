@@ -1,5 +1,5 @@
 # Build AI Agents with managed PostgreSQL on Azure
-Combine Azure Database for PostgreSQL with popular GenAI Frameworks to create intelligent AI agents.
+Combine managed PostgreSQL on Azure with popular GenAI Frameworks to create intelligent AI agents.
 
 AI agents are revolutionizing how applications interact with data by combining large language models (LLMs) with external tools and databases. 
 
