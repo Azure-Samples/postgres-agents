@@ -1,3 +1,5 @@
+from contextlib import redirect_stdout
+import io
 import json
 import os
 from pathlib import Path
@@ -5,6 +7,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from psycopg.conninfo import conninfo_to_dict
+import numpy as np
 
 
 CELLS = {
@@ -16,6 +19,22 @@ CELLS = {
 
 
 class NotebookConfigurationTests(unittest.TestCase):
+    def test_embedding_smoke_check_accepts_provider_rounding(self):
+        embedding = MagicMock()
+        embedding.embed_query.return_value = [1.000124] + [0.0] * 1535
+        with redirect_stdout(io.StringIO()):
+            exec(CELLS["6a0c08ac"], {"embedding": embedding, "np": np})
+
+    def test_embedding_smoke_check_rejects_invalid_cosine_vectors(self):
+        for vector in ([0.0] * 1536, [float("nan")] * 1536, [1.0] * 3):
+            embedding = MagicMock()
+            embedding.embed_query.return_value = vector
+            with (
+                self.subTest(dimensions=len(vector)),
+                self.assertRaises(AssertionError),
+            ):
+                exec(CELLS["6a0c08ac"], {"embedding": embedding, "np": np})
+
     def test_password_connection_uses_all_database_settings(self):
         for host in (
             "cluster.rw.example.horizondb.azure.com",
