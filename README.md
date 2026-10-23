@@ -1,5 +1,4 @@
-# Build AI Agents with Azure Database for PostgreSQL
-
+# Build AI Agents with Azure HorizonDB and Flexible Server
 Combine Azure Database for PostgreSQL with popular GenAI Frameworks to create intelligent AI agents.
 
 AI agents are revolutionizing how applications interact with data by combining large language models (LLMs) with external tools and databases. 
