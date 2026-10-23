@@ -44,9 +44,6 @@ from opentelemetry import trace
 from azure.monitor.opentelemetry import configure_azure_monitor
 from pprint import pprint
 from legal_agent_tools import user_functions
-from dotenv import load_dotenv
-# Load environment variables
-load_dotenv("../.env")
 
 project_client = AIProjectClient.from_connection_string(
     credential=DefaultAzureCredential(), 

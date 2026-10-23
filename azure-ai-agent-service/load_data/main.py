@@ -1,124 +1,87 @@
-import psycopg2
+import argparse
+from contextlib import closing
 import csv
-import json
 import os
+from pathlib import Path
 import sys
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv("../.env")
+import psycopg2
 
-# Increase the maximum field size limit
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from postgres_config import embedding_config  # noqa: E402
+
+
 csv.field_size_limit(sys.maxsize)
 
-# Fetch the connection string from the environment variable
-CONN_STR = os.getenv("AZURE_PG_CONNECTION")
 
-# Fetch the OpenAI settings from environment variables
-AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+def load_cases(limit: int | None = None) -> None:
+    expression, model = embedding_config("name || LEFT(opinion, 8000)")
+    service = os.getenv("POSTGRES_SERVICE", "flex").lower()
+    with closing(psycopg2.connect(os.environ["AZURE_PG_CONNECTION"])) as conn, conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            cur.execute("CREATE EXTENSION IF NOT EXISTS azure_ai")
+            if service == "flex":
+                for setting, variable in (
+                    ("azure_openai.endpoint", "AZURE_OPENAI_ENDPOINT"),
+                    ("azure_openai.subscription_key", "AZURE_OPENAI_API_KEY"),
+                ):
+                    cur.execute(
+                        "SELECT azure_ai.set_setting(%s, %s)",
+                        (setting, os.environ[variable]),
+                    )
 
-# Fetch the Embedding model name from environment variables
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME")
-                                  
-# Establish a connection to the PostgreSQL database
-conn = psycopg2.connect(CONN_STR)
+            # Fail rather than overwrite an existing demo or application table.
+            cur.execute("""
+                CREATE TABLE cases (
+                    id INT PRIMARY KEY,
+                    name TEXT,
+                    decision_date DATE,
+                    court_id INT,
+                    opinion TEXT,
+                    opinions_vector vector(1536)
+                )
+            """)
+            cur.execute("CREATE TEMP TABLE temp_cases_data (data jsonb) ON COMMIT DROP")
+            with Path(__file__).with_name("cases.csv").open(newline="") as source:
+                for index, row in enumerate(csv.DictReader(source)):
+                    if limit is not None and index >= limit:
+                        break
+                    cur.execute(
+                        "INSERT INTO temp_cases_data (data) VALUES (%s)", (row["data"],)
+                    )
+            cur.execute("""
+                INSERT INTO cases (id, name, decision_date, court_id, opinion)
+                SELECT
+                    (data#>>'{id}')::int,
+                    data#>>'{name_abbreviation}',
+                    (data#>>'{decision_date}')::date,
+                    (data#>>'{court,id}')::int,
+                    array_to_string(ARRAY(
+                        SELECT jsonb_path_query(data, '$.casebody.opinions[*].text')
+                    ), ', ')
+                FROM temp_cases_data
+            """)
+            print("Generating 1536-dimensional embeddings...")
+            cur.execute(
+                f"UPDATE cases SET opinions_vector = {expression} "
+                "WHERE opinions_vector IS NULL",
+                (model,),
+            )
+            loaded_count = cur.rowcount
+    print(f"Loaded and embedded {loaded_count} cases.")
 
-# Create a cursor object using the connection
-cur = conn.cursor()
 
-# Enable the required extensions
-def create_extensions(cur):
-    cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    cur.execute("CREATE EXTENSION IF NOT EXISTS azure_ai")
-    print("Extensions created successfully")
-    conn.commit()
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Load legal cases into a new demo database."
+    )
+    parser.add_argument("--limit", type=int, help="Load only the first N cases.")
+    args = parser.parse_args()
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit must be positive")
+    load_cases(args.limit)
 
-# Setup OpenAI
-def create_openai_connection(cur):
-    cur.execute(f"SELECT azure_ai.set_setting('azure_openai.endpoint', '{AZURE_OPENAI_ENDPOINT}')")
-    cur.execute(f"SELECT azure_ai.set_setting('azure_openai.subscription_key', '{AZURE_OPENAI_API_KEY}')")
-    print("OpenAI connection established successfully")
-    conn.commit()
 
-# Drop the cases table if it exists
-def create_tables(cur):
-    cur.execute("DROP TABLE IF EXISTS cases")
-    cur.execute("DROP TABLE IF EXISTS temp_cases_data")
-    conn.commit()
-
-    # Create the cases table
-    cur.execute("""
-        CREATE TABLE cases (
-            id SERIAL PRIMARY KEY,
-            name TEXT,
-            decision_date DATE,
-            court_id INT,
-            opinion TEXT
-        )
-    """)
-    print("Cases table created successfully")
-    conn.commit()
-
-    # Create the temp_cases table
-    cur.execute("CREATE TABLE temp_cases_data (data jsonb)")
-    conn.commit()
-    print("Temp cases table created successfully")
-
-# Load data from the CSV file into the temp_cases table
-def ingest_data_to_tables(cur):
-    with open('cases.csv', 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            json_data = row['data']
-            #print(json_data)
-            cur.execute("INSERT INTO temp_cases_data (data) VALUES (%s)", [json_data])
-    conn.commit()
-    print("Data loaded into temp_cases_data table successfully")
-    
-    # Insert data into the cases table
-    cur.execute("""
-        INSERT INTO cases
-        SELECT
-            (data#>>'{id}')::int AS id,
-            (data#>>'{name_abbreviation}')::text AS name,
-            (data#>>'{decision_date}')::date AS decision_date,
-            (data#>>'{court,id}')::int AS court_id,
-            array_to_string(ARRAY(
-                SELECT jsonb_path_query(data, '$.casebody.opinions[*].text')
-            ), ', ') AS opinion
-        FROM temp_cases_data
-    """)
-    conn.commit()
-    print("Data loaded into cases table successfully")
-
-# Add Embeddings
-def add_embeddings(cur):
-    print("Adding Embeddings, this will take a while around 3-5 mins...")
-    cur.execute("ALTER TABLE cases ADD COLUMN opinions_vector vector(1536)")
-    cur.execute(f"""
-        UPDATE cases
-        SET opinions_vector = azure_openai.create_embeddings(
-            '{EMBEDDING_MODEL_NAME}', 
-            name || LEFT(opinion, 8000), 
-            max_attempts => 5, 
-            retry_delay_ms => 500
-        )::vector
-        WHERE opinions_vector IS NULL
-    """)
-
-    # Commit the transaction
-    conn.commit()
-    print("Embeddings added successfully")
-
-create_extensions(cur)
-create_openai_connection(cur)
-create_tables(cur)
-ingest_data_to_tables(cur)
-add_embeddings(cur)
-
-# Close the cursor and connection
-cur.close()
-conn.close()
-
-print("All Data loaded successfully!")
+if __name__ == "__main__":
+    main()

@@ -1,119 +1,52 @@
-# Azure PostgreSQL + LangGraph Demo
+# LangGraph with managed PostgreSQL on Azure
 
-Short guide to spin up a local dev environment, configure Azure Postgres, and run the notebook showing unified agent state, memory, chat history, and vector retrieval using LangGraph.
+Use **Azure HorizonDB** or **Azure Database for PostgreSQL Flexible Server** as one store for vector retrieval, agent checkpoints, conversation history, and long-term memory.
 
-## 1. Prerequisites
-- Python 3.10+ recommended
-- An Azure Database for PostgreSQL Flexible Server (v14+)
-- pgvector & pg_diskann extension available
-- Azure OpenAI API key
-- (Optional) VS Code with Python + Jupyter extensions
+## 1. Prepare your services
 
-## 2. Clone & Enter Project
-If you haven't already:
+- Python 3.10+, [uv](https://docs.astral.sh/uv/getting-started/installation/), and VS Code with Python and Jupyter extensions.
+- A **new demo database**, PostgreSQL login, and network access from your machine.
+- Azure OpenAI embedding and chat deployments. This notebook calls Azure OpenAI from Python on **both** database services; a HorizonDB managed-model registration is not required.
+
+| Database | Setup |
+| --- | --- |
+| HorizonDB | Copy the cluster's **read-write endpoint**, port, and login from its connection details. |
+| Flexible Server | Copy the server's connection details and allow `vector` and `pg_diskann` in `azure.extensions`. |
+
+The notebook creates `vector` and `pg_diskann`, so your role needs permission to create these extensions and the demo tables.
+
+## 2. Install and configure
+
+From the repository root:
+
 ```bash
-git clone https://github.com/Azure-Samples/postgres-agents.git
 cd langgraph
-```
-
-## 3. Create & Activate Virtual Environment using `uv`
-
-This project uses `pyproject.toml` and `uv` to manage virtual environments and dependencies. `uv` will create a `.venv` folder and install packages from `pyproject.toml`.
-
-Install `uv` if you don't have it (recommended via `pipx`):
-
-```bash
-# preferred (isolated)
-pipx install uv
-
-# or (quick)
-python -m pip install --user uv
-```
-
-Create and activate the venv:
-
-```bash
-# create .venv (uv will create it on sync too)
-uv venv
-
-# activate venv (macOS / Linux)
-source .venv/bin/activate
-
-# Windows PowerShell
-# .venv\Scripts\Activate.ps1
-```
-
-## 4. Install Dependencies from `pyproject.toml`
-
-Install everything defined in `pyproject.toml` (default groups = all):
-
-```bash
-# sync installs packages into .venv per pyproject.toml
 uv sync
-```
-
-Install only specific groups (optional):
-
-```bash
-# example: install only core groups, skip dev/tools
-uv sync --no-group dev --no-group utilities
-```
-
-Notes:
-
-- If `pyproject.toml` references a local wheel (e.g. `dist/langchain_azure_postgresql-*.whl`), ensure the file exists or change the reference to an editable path.
-- Re-run `uv sync` after editing `pyproject.toml`.
-
-## 5. Configure Environment Variables
-Copy the example file and edit secrets:
-```bash
 cp .env.example .env
 ```
-Edit `.env` and set:
-```
-AZURE_PG_HOST=your-server.postgres.database.azure.com
-AZURE_PG_DB=agentdb
-AZURE_PG_USER=agent_user
-AZURE_PG_PASSWORD=********
-OPENAI_API_KEY=sk-...
-# (Optional Azure OpenAI)
-# AZURE_OPENAI_ENDPOINT=...
-# AZURE_OPENAI_API_KEY=...
-# AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
-# AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small
-```
 
-## 6. Run the Notebook
-**Option A (VS Code):** 
-1. Open the folder, 
-3. Open `langgraph.ipynb` 
-4. Select Python Environment `langgraph-azure-postgres`. This environment would have been created in previous steps through the pyproject.toml. 
-5. Run cells.
+Edit `.env` with your database's `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, and `PGPASSWORD`. Keep `PGSSLMODE=require`.
 
-**Option B (CLI Jupyter):**
-```bash
-pip install notebook  # if not already
-jupyter notebook
-```
-Open `langgraph.ipynb` in the browser.
+For Azure OpenAI, set `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT` (chat), and `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`. Use your **deployment names**. Alternatively, set `OPENAI_API_KEY` and remove the Azure OpenAI key to use OpenAI.
 
-## 7. Common Issues
-| Symptom | Fix |
-|---------|-----|
-| SSL error connecting to DB | Ensure `sslmode=require` & correct host name. |
-| `vector` type not found | Run the `CREATE EXTENSION vector;` command. |
-| Auth failure | Re-check username format (often ends with `@servername`). |
-| Slow vector search | Run `ANALYZE documents;` and adjust IVFFLAT `lists`. |
-| OpenAI auth error | Confirm key loaded: `echo $OPENAI_API_KEY`. |
+Keep `.env` private. Tracing is disabled by default.
 
-## 8. Cleaning Up
-Deactivate venv:
-```bash
-deactivate
-```
-Remove build artifacts or cache:
-```bash
-find . -name '__pycache__' -type d -prune -exec rm -rf {} +
-```
+## 3. Run the notebook
 
+Open `langgraph.ipynb` in VS Code, select `langgraph/.venv/bin/python` (Windows: `.venv\Scripts\python.exe`) as the kernel, and **Run All**.
 
+The notebook selects password authentication when `PGPASSWORD` is set. To use Microsoft Entra authentication instead, remove `PGPASSWORD`, run `az login`, and set `PGUSER` to your database's provisioned Entra role. The database must already be configured for that identity.
+
+Cells demonstrate vector insert/search/update/delete, filtered retrieval, checkpointed conversations, long-term memory, and a retrieval agent. They create persistent tables in the demo database and call paid model APIs.
+
+## Troubleshooting and cleanup
+
+| Symptom | Check |
+| --- | --- |
+| Connection or TLS error | Actual read-write endpoint, port, `PGSSLMODE`, and network access |
+| Authentication failure | Database login; for Entra, database role provisioning and `az login` |
+| Missing extension | Creation privileges; Flex extension allowlist |
+| Azure OpenAI error | Endpoint, API version, deployment names, and key |
+| Unexpected old conversation | Use a new thread ID or a fresh demo database |
+
+Run the final cleanup cell to release pooled connections. Delete the dedicated demo database when finished; do not delete the cluster or server.
